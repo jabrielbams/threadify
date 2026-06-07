@@ -34,7 +34,6 @@ export function EditPostForm({
   currentImageUrls,
   avatarUrl,
   displayName,
-  username,
 }: EditPostFormProps) {
   const router = useRouter();
   const [content, setContent] = useState(currentContent);
@@ -89,7 +88,7 @@ export function EditPostForm({
       const supabase = createBrowserClient();
 
       // Upload new files if any
-      let uploadedUrls: string[] = [];
+      const uploadedUrls: string[] = [];
       if (newFiles.length > 0) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {

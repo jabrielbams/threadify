@@ -61,9 +61,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
 
   if (type === "report") {
+    const reportStatus = action === "approved" ? "resolved" as const : action as "resolved" | "dismissed";
     const { error: reportError } = await admin
       .from("reports")
-      .update({ status: action, resolved_at: now })
+      .update({ status: reportStatus, resolved_at: now })
       .eq("id", id);
 
     if (reportError) {

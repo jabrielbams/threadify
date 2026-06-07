@@ -63,7 +63,7 @@ export function PreviewStep({
                   "mt-md grid gap-2",
                   previewUrls.length > 1 ? "grid-cols-2" : "grid-cols-1",
                 )}>
-                  {previewUrls.map((url, index) => (
+                  {previewUrls.map((url) => (
                     <div
                       key={url}
                       className="overflow-hidden rounded-xl"

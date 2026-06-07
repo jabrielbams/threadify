@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Bell, Search, User, LogOut, X } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/ui/Avatar";
-import { cn } from "@/lib/utils/cn";
 
 interface UserInfo {
   username: string;

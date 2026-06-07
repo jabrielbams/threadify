@@ -12,7 +12,7 @@ interface SuccessStepProps {
  * Step 4: Success — post published confirmation.
  * Shows a green checkmark and options to view the post or create another.
  */
-export function SuccessStep({ postId, onViewPost, onNewPost }: SuccessStepProps) {
+export function SuccessStep({ onViewPost, onNewPost }: SuccessStepProps) {
   return (
     <section className="flex w-full max-w-[600px] flex-col items-center justify-center gap-lg rounded-xl border border-outline-variant/20 bg-surface-container-lowest p-xl text-center shadow-lg">
       {/* Success Icon */}

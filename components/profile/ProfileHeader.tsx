@@ -24,7 +24,6 @@ export function ProfileHeader({
   bio,
   avatarUrl,
   bannerUrl,
-  postCount,
   followerCount = 0,
   followingCount = 0,
   isOwnProfile,

@@ -32,7 +32,6 @@ export function EditProfileForm({
   currentBio,
   currentAvatarUrl,
   currentUsername,
-  usernameChangedAt,
 }: EditProfileFormProps) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(currentDisplayName);

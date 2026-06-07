@@ -34,7 +34,7 @@ Rules:
  */
 function extractJson(text: string): ModerationResult | null {
   // Strip markdown code fences if present
-  let cleaned = text
+  const cleaned = text
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
     .trim();

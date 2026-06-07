@@ -158,7 +158,7 @@ export function FloatingComposer({
       if (files.length > 0) {
         try {
           imageUrls = await uploadPostImages(currentUserId, files);
-        } catch (uploadErr) {
+        } catch {
           setFeedback({
             type: "error",
             message: "Gagal mengunggah gambar. Pastikan ukuran file tidak melebihi 5MB dan format yang didukung (JPEG, PNG, WebP).",

@@ -2,7 +2,6 @@
 
 import { useState, type MouseEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils/cn";
 
 interface LoadingLinkProps {
@@ -27,7 +26,6 @@ export function LoadingLink({
   ...props
 }: LoadingLinkProps) {
   const [isNavigating, setIsNavigating] = useState(false);
-  const router = useRouter();
 
   function handleClick(e: MouseEvent<HTMLAnchorElement>) {
     // Don't show loading if it's the current page
