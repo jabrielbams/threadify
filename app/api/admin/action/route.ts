@@ -1,12 +1,76 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { STRIKE_THRESHOLDS } from "@/constants/moderation";
 
 const actionSchema = z.object({
   type: z.enum(["appeal", "report"]),
   id: z.string().uuid(),
   action: z.enum(["approved", "rejected", "resolved", "dismissed"]),
 });
+
+/**
+ * Updates user profile restrictions based on their active strike count.
+ * If strike count is below thresholds, restrictions are removed.
+ * If strike count meets thresholds, appropriate restrictions are applied.
+ */
+async function updateUserRestrictions(
+  userId: string,
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<void> {
+  // Count unresolved (active) strikes
+  const { count: activeStrikeCount, error: countError } = await admin
+    .from("strikes")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_resolved", false);
+
+  if (countError) {
+    console.error("[Admin Action] Failed to count active strikes:", countError.message);
+    throw new Error("STRIKE_COUNT_FAILED");
+  }
+
+  const strikeCount = activeStrikeCount ?? 0;
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  let updates: {
+    is_banned?: boolean;
+    ban_expires_at?: string | null;
+    post_restricted_until?: string | null;
+  } = {};
+
+  // Determine restrictions based on active strike count
+  if (strikeCount >= STRIKE_THRESHOLDS.PERMANENT_BAN) {
+    updates = { is_banned: true, ban_expires_at: null };
+  } else if (strikeCount >= STRIKE_THRESHOLDS.ACCOUNT_SUSPENSION_72H) {
+    updates = {
+      is_banned: true,
+      ban_expires_at: new Date(now + dayMs * 3).toISOString(),
+    };
+  } else if (strikeCount >= STRIKE_THRESHOLDS.POST_RESTRICTION_24H) {
+    updates = {
+      post_restricted_until: new Date(now + dayMs).toISOString(),
+    };
+  } else {
+    // No strikes or below threshold — clear all restrictions
+    updates = {
+      is_banned: false,
+      ban_expires_at: null,
+      post_restricted_until: null,
+    };
+  }
+
+  const { error: updateError } = await admin
+    .from("profiles")
+    .update(updates)
+    .eq("user_id", userId);
+
+  if (updateError) {
+    console.error("[Admin Action] Failed to update restrictions:", updateError.message);
+    throw new Error("RESTRICTION_UPDATE_FAILED");
+  }
+}
 
 /**
  * POST /api/admin/action
@@ -41,19 +105,34 @@ export async function POST(request: Request): Promise<NextResponse> {
       return NextResponse.json({ error: "Failed to update appeal" }, { status: 500 });
     }
 
-    // If approved, resolve the associated strike
+    // If approved, resolve the associated strike and update restrictions
     if (action === "approved") {
-      const { data: appeal } = await admin
+      const { data: appeal, error: fetchError } = await admin
         .from("appeals")
-        .select("strike_id")
+        .select("strike_id, strikes!inner(user_id)")
         .eq("id", id)
         .single();
 
-      if (appeal) {
-        await admin
-          .from("strikes")
-          .update({ is_resolved: true, resolved_at: now })
-          .eq("id", appeal.strike_id);
+      if (fetchError || !appeal) {
+        return NextResponse.json({ error: "Failed to fetch appeal details" }, { status: 500 });
+      }
+
+      // Resolve the strike
+      const { error: strikeError } = await admin
+        .from("strikes")
+        .update({ is_resolved: true, resolved_at: now })
+        .eq("id", appeal.strike_id);
+
+      if (strikeError) {
+        return NextResponse.json({ error: "Failed to resolve strike" }, { status: 500 });
+      }
+
+      // Update restrictions based on new active strike count
+      try {
+        const userId = (appeal.strikes as any).user_id;
+        await updateUserRestrictions(userId, admin);
+      } catch {
+        return NextResponse.json({ error: "Failed to update restrictions" }, { status: 500 });
       }
     }
 
