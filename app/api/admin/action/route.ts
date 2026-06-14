@@ -76,6 +76,11 @@ async function updateUserRestrictions(
  * POST /api/admin/action
  * Handles moderator actions on appeals and reports.
  * Uses service role to bypass RLS for updates.
+ *
+ * When an appeal is approved:
+ * - Strike is marked as resolved
+ * - Active strikes are recalculated
+ * - User restrictions are updated based on remaining strikes
  */
 export async function POST(request: Request): Promise<NextResponse> {
   let body: unknown;
