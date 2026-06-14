@@ -109,12 +109,23 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (action === "approved") {
       const { data: appeal, error: fetchError } = await admin
         .from("appeals")
-        .select("strike_id, strikes!inner(user_id)")
+        .select("strike_id")
         .eq("id", id)
         .single();
 
       if (fetchError || !appeal) {
         return NextResponse.json({ error: "Failed to fetch appeal details" }, { status: 500 });
+      }
+
+      // Get the strike to find the user_id
+      const { data: strike, error: strikeSelectError } = await admin
+        .from("strikes")
+        .select("user_id")
+        .eq("id", appeal.strike_id)
+        .single();
+
+      if (strikeSelectError || !strike) {
+        return NextResponse.json({ error: "Failed to fetch strike details" }, { status: 500 });
       }
 
       // Resolve the strike
@@ -129,8 +140,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
       // Update restrictions based on new active strike count
       try {
-        const userId = (appeal.strikes as any).user_id;
-        await updateUserRestrictions(userId, admin);
+        await updateUserRestrictions(strike.user_id, admin);
       } catch {
         return NextResponse.json({ error: "Failed to update restrictions" }, { status: 500 });
       }
