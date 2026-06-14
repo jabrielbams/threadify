@@ -9,6 +9,11 @@ const actionSchema = z.object({
   action: z.enum(["approved", "rejected", "resolved", "dismissed"]),
 });
 
+type AppealWithStrike = {
+  strike_id: string;
+  strikes: { user_id: string };
+};
+
 /**
  * Updates user profile restrictions based on their active strike count.
  * If strike count is below thresholds, restrictions are removed.
@@ -112,15 +117,17 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     // If approved, resolve the associated strike and update restrictions
     if (action === "approved") {
-      const { data: appeal, error: fetchError } = await admin
+      const { data: appealData, error: fetchError } = await admin
         .from("appeals")
         .select("strike_id, strikes!inner(user_id)")
         .eq("id", id)
         .single();
 
-      if (fetchError || !appeal) {
+      if (fetchError || !appealData) {
         return NextResponse.json({ error: "Failed to fetch appeal details" }, { status: 500 });
       }
+
+      const appeal = appealData as AppealWithStrike;
 
       // Resolve the strike
       const { error: strikeError } = await admin
@@ -134,7 +141,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
       // Update restrictions based on new active strike count
       try {
-        const userId = (appeal.strikes as any).user_id;
+        const userId = appeal.strikes.user_id;
         await updateUserRestrictions(userId, admin);
       } catch {
         return NextResponse.json({ error: "Failed to update restrictions" }, { status: 500 });
