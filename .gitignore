@@ -34,12 +34,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-.kiro/
-
-.AI_SKILLS.md
-.ARCHITECTURE.md
-.DESIGN.md
-.ERD.md
-.RULES.md
-.PRD.md
+# Local Netlify folder
+.netlify

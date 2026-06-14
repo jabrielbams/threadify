@@ -17,10 +17,58 @@ function normalizePhone(raw: string): string {
 }
 
 /**
+ * Gets all test account credentials from environment variables.
+ * Supports multiple test accounts via TEST_PHONE_1, TEST_OTP_1, TEST_PHONE_2, TEST_OTP_2, etc.
+ * Also supports legacy TEST_PHONE and TEST_OTP for backward compatibility.
+ *
+ * @returns Array of {phone, otp} pairs for test accounts
+ */
+function getTestAccounts(): Array<{ phone: string; otp: string }> {
+  const accounts: Array<{ phone: string; otp: string }> = [];
+
+  // Legacy support: TEST_PHONE and TEST_OTP
+  const legacyPhone = process.env.TEST_PHONE;
+  const legacyOtp = process.env.TEST_OTP;
+  if (legacyPhone && legacyOtp) {
+    accounts.push({ phone: legacyPhone, otp: legacyOtp });
+  }
+
+  // Numbered test accounts: TEST_PHONE_1, TEST_OTP_1, TEST_PHONE_2, TEST_OTP_2, etc.
+  let index = 1;
+  while (true) {
+    const phone = process.env[`TEST_PHONE_${index}`];
+    const otp = process.env[`TEST_OTP_${index}`];
+    if (!phone || !otp) break;
+    accounts.push({ phone, otp });
+    index++;
+  }
+
+  return accounts;
+}
+
+/**
+ * Finds a matching test account for the given phone and OTP.
+ * @returns The matching test account, or null if not found
+ */
+function findTestAccount(phone: string, otp: string): { phone: string; otp: string } | null {
+  const accounts = getTestAccounts();
+  return accounts.find((acc) => acc.phone === phone && acc.otp === otp) ?? null;
+}
+
+/**
+ * Checks if a phone number is a test account.
+ * @returns true if the phone matches any configured test account phone
+ */
+function isTestPhone(phone: string): boolean {
+  const accounts = getTestAccounts();
+  return accounts.some((acc) => acc.phone === phone);
+}
+
+/**
  * Sends a one-time password SMS to the given phone number.
  * Works for both login and registration flows.
  *
- * In development: if TEST_PHONE env is set and matches, skips real OTP send.
+ * In development: if phone matches any TEST_PHONE_* env var, skips real OTP send.
  *
  * @param rawPhone - Phone number in any accepted format
  * @returns AuthActionResult indicating success or failure
@@ -29,9 +77,8 @@ export async function sendOtp(rawPhone: string): Promise<AuthActionResult> {
   const supabase = createServerClient();
   const phone = normalizePhone(rawPhone);
 
-  // Dev bypass: skip real SMS for test account
-  const testPhone = process.env.TEST_PHONE;
-  if (testPhone && phone === testPhone) {
+  // Dev bypass: skip real SMS for test accounts
+  if (isTestPhone(phone)) {
     console.info("[Auth] Test OTP bypass — skipping real SMS for", maskPhoneNumber(phone));
     return { success: true };
   }
@@ -75,9 +122,8 @@ export async function verifyOtp(
   const phone = normalizePhone(rawPhone);
 
   // Dev bypass: test account with pre-generated OTP
-  const testPhone = process.env.TEST_PHONE;
-  const testOtp = process.env.TEST_OTP;
-  if (testPhone && testOtp && phone === testPhone && token === testOtp) {
+  const testAccount = findTestAccount(phone, token);
+  if (testAccount) {
     console.info("[Auth] Test OTP bypass — signing in test user", maskPhoneNumber(phone));
 
     // Use admin client to create or retrieve the test user
